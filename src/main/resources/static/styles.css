@@ -1,0 +1,125 @@
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  background: #f6f7fb;
+  color: #111;
+}
+
+.topbar {
+  padding: 18px 20px;
+  background: white;
+  border-bottom: 1px solid #e6e8f0;
+}
+.topbar h1 { margin: 0; font-size: 20px; }
+.sub { margin: 6px 0 0; color: #666; font-size: 14px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  padding: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e6e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d7dbea;
+  border-radius: 10px;
+  outline: none;
+}
+.row button {
+  padding: 10px 12px;
+  border: 1px solid #cfd5ea;
+  background: #f1f3ff;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.row button:hover { filter: brightness(0.98); }
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list li {
+  padding: 10px 12px;
+  border: 1px solid #edf0fb;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+.list li:hover { background: #fafbff; }
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #e6e8f0;
+  color: #444;
+  white-space: nowrap;
+}
+
+.details .title {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th, .table td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #eef1fb;
+  font-size: 14px;
+}
+.muted { color: #666; }
+.status { color: #b00020; font-size: 13px; min-height: 18px; }
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mini {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #d7dbea;
+  border-radius: 8px;
+}
+
+.actions { white-space: nowrap; }
+
+.btn {
+  padding: 6px 10px;
+  border: 1px solid #cfd5ea;
+  background: #f1f3ff;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+.btn:hover { filter: brightness(0.98); }
+
+.btn.danger {
+  background: #ffecec;
+  border-color: #ffb6b6;
+}
+

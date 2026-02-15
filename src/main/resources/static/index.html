@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bus Routing Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Bus Routing Prototype</h1>
+    <p class="sub">Routes → Stops → Pickup Times</p>
+  </header>
+
+  <main class="layout">
+    <section class="card">
+      <h2>Routes</h2>
+
+      <form id="createRouteForm" class="row">
+        <input id="routeNumberInput" type="text" placeholder="Route number (e.g., 29)" />
+        <button type="submit">Add Route</button>
+      </form>
+
+      <ul id="routesList" class="list"></ul>
+      <p id="routesStatus" class="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>Route Details</h2>
+     <h2>Route Details</h2>
+
+<div id="routeDetails" class="details">
+  <p class="muted">Select a route to view stops.</p>
+</div>
+
+<hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
+
+<p class="muted">Selected route id: <span id="selectedRouteLabel">none</span></p>
+<h3 style="margin:0 0 10px;">Add Stop to Selected Route</h3>
+
+<form id="addStopForm" class="stack">
+  <input id="stopName" type="text" placeholder="Stop name (e.g., Main St & 3rd)" required />
+  <div class="row">
+    <input id="stopLat" type="number" step="any" placeholder="Latitude" required />
+    <input id="stopLon" type="number" step="any" placeholder="Longitude" required />
+  </div>
+  <div class="row">
+    <input id="stopOrder" type="number" min="1" step="1" placeholder="Stop order (1,2,3...)" required />
+    <input id="pickupTime" type="text" placeholder="Pickup time (HH:MM, e.g., 06:45)" required />
+  </div>
+  <button type="submit">Add Stop</button>
+  <p id="addStopStatus" class="status"></p>
+</form>
+
+<p id="detailsStatus" class="status"></p>
+
+      <p id="detailsStatus" class="status"></p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
