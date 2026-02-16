@@ -32,6 +32,27 @@
 <div id="routeDetails" class="details">
   <p class="muted">Select a route to view stops.</p>
 </div>
+<section class="card">
+  <h3 class="title">Merge Routes</h3>
+
+  <p class="muted">
+    Base route (selected): <strong><span id="mergeBaseRouteLabel">none</span></strong>
+  </p>
+
+  <label class="label" for="donorRouteSelect">Donor route (route to pull stops from)</label>
+  <select id="donorRouteSelect"></select>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+    <button id="loadDonorStopsBtn" type="button">Load donor stops</button>
+    <button id="selectAllDonorStopsBtn" type="button">Select all</button>
+    <button id="mergeSelectedStopsBtn" type="button">Merge selected into base</button>
+  </div>
+
+  <p id="mergeStatus" class="status"></p>
+
+  <div id="donorStopsList" style="margin-top:12px;"></div>
+</section>
+
 
 <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
 

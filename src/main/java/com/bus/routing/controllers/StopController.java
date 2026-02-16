@@ -28,6 +28,7 @@ public class StopController {
         }
         return stopRepository.save(stop);
     }
+    
 
     @DeleteMapping("/{id}")
     public void deleteStop(@PathVariable Long id) {

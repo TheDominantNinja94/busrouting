@@ -17,6 +17,15 @@ const stopLonEl = document.getElementById("stopLon");
 const stopOrderEl = document.getElementById("stopOrder");
 const pickupTimeEl = document.getElementById("pickupTime");
 
+// Merge UI
+const mergeBaseRouteLabelEl = document.getElementById("mergeBaseRouteLabel");
+const donorRouteSelectEl = document.getElementById("donorRouteSelect");
+const loadDonorStopsBtn = document.getElementById("loadDonorStopsBtn");
+const selectAllDonorStopsBtn = document.getElementById("selectAllDonorStopsBtn");
+const mergeSelectedStopsBtn = document.getElementById("mergeSelectedStopsBtn");
+const donorStopsListEl = document.getElementById("donorStopsList");
+const mergeStatusEl = document.getElementById("mergeStatus");
+
 let selectedRouteId = null;
 
 // ===== API helpers =====
@@ -37,8 +46,6 @@ async function apiPost(url, bodyObj) {
     const text = await res.text();
     throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
-
-  // POST returns JSON
   return res.json();
 }
 
@@ -53,21 +60,15 @@ async function apiPatch(url, bodyObj) {
     const text = await res.text();
     throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
-
-  // PATCH returns JSON
   return res.json();
 }
 
 async function apiDelete(url) {
   const res = await fetch(url, { method: "DELETE" });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`${res.status} ${res.statusText}: ${text}`);
   }
-
-  // DELETE is usually 204 No Content
-  return;
 }
 
 // ===== UI helpers =====
@@ -75,6 +76,7 @@ function clearStatus() {
   routesStatusEl.textContent = "";
   detailsStatusEl.textContent = "";
   if (addStopStatusEl) addStopStatusEl.textContent = "";
+  if (mergeStatusEl) mergeStatusEl.textContent = "";
 }
 
 function routeLabel(route) {
@@ -96,6 +98,17 @@ function renderRoutes(routes) {
 
   if (routes.length === 0) {
     routesListEl.innerHTML = `<li><span class="muted">No routes yet. Add one above.</span></li>`;
+  }
+
+  // Populate donor dropdown with all routes
+  if (donorRouteSelectEl) {
+    donorRouteSelectEl.innerHTML = "";
+    routes.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = `Route ${r.routeNumber} (id ${r.id})`;
+      donorRouteSelectEl.appendChild(opt);
+    });
   }
 }
 
@@ -162,7 +175,9 @@ async function loadRoutes() {
 
 async function loadRouteDetails(routeId) {
   selectedRouteId = routeId;
+
   if (selectedRouteLabelEl) selectedRouteLabelEl.textContent = String(routeId);
+  if (mergeBaseRouteLabelEl) mergeBaseRouteLabelEl.textContent = String(routeId);
 
   clearStatus();
   detailsEl.innerHTML = `<p class="muted">Loading route ${routeId}…</p>`;
@@ -209,13 +224,7 @@ addStopForm.addEventListener("submit", async (e) => {
   const stopOrder = Number(stopOrderEl.value);
   const pickupTime = pickupTimeEl.value.trim();
 
-  if (
-    !name ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    !Number.isFinite(stopOrder) ||
-    !pickupTime
-  ) {
+  if (!name || !Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(stopOrder)) {
     addStopStatusEl.textContent = "Fill out all fields.";
     return;
   }
@@ -223,24 +232,16 @@ addStopForm.addEventListener("submit", async (e) => {
   addStopStatusEl.textContent = "Adding stop...";
 
   try {
-    // 1) Create the stop
     const stop = await apiPost("/stops", { name, latitude, longitude });
-    addStopStatusEl.textContent = "Stop created, attaching to route...";
-
-    // 2) Attach stop to the selected route
-    const payload = {
+    await apiPost("/route-stops", {
       routeId: selectedRouteId,
       stopId: stop.id,
       stopOrder,
-      pickupTime,
-    };
+      pickupTime: pickupTime || null,
+    });
 
-    await apiPost("/route-stops", payload);
-
-    // 3) Refresh details
     await loadRouteDetails(selectedRouteId);
 
-    // Clear form
     stopNameEl.value = "";
     stopLatEl.value = "";
     stopLonEl.value = "";
@@ -273,12 +274,16 @@ detailsEl.addEventListener("click", async (e) => {
       const stopOrder = Number(stopOrderInput.value);
       const pickupTime = pickupTimeInput.value.trim();
 
-      if (!Number.isFinite(stopOrder) || stopOrder < 1 || !pickupTime) {
-        detailsStatusEl.textContent = "Stop order and pickup time are required.";
+      if (!Number.isFinite(stopOrder) || stopOrder < 1) {
+        detailsStatusEl.textContent = "Stop order must be a number >= 1.";
         return;
       }
 
-      await apiPatch(`/route-stops/${routeStopId}`, { stopOrder, pickupTime });
+      await apiPatch(`/route-stops/${routeStopId}`, {
+        stopOrder,
+        pickupTime: pickupTime || null,
+      });
+
       await loadRouteDetails(selectedRouteId);
     }
 
@@ -291,6 +296,109 @@ detailsEl.addEventListener("click", async (e) => {
     }
   } catch (err) {
     detailsStatusEl.textContent = err.message;
+  }
+});
+
+// ===== Merge helpers =====
+async function loadDonorStops(donorRouteId) {
+  if (!donorStopsListEl) return;
+
+  mergeStatusEl.textContent = "";
+  donorStopsListEl.innerHTML = "<p class='muted'>Loading donor stops...</p>";
+
+  const details = await apiGet(`/routes/${donorRouteId}/details`);
+  const stops = details.stops ?? [];
+
+  if (stops.length === 0) {
+    donorStopsListEl.innerHTML = "<p class='muted'>No stops on donor route.</p>";
+    return;
+  }
+
+  donorStopsListEl.innerHTML = stops
+    .map(
+      (s) => `
+    <label style="display:flex; gap:10px; align-items:center; margin:6px 0;">
+      <input type="checkbox" class="donorStopCb" value="${s.routeStopId}">
+      <span>
+        <strong>#${s.stopOrder}</strong> ${s.name}
+        <span class="muted">(routeStopId ${s.routeStopId})</span>
+      </span>
+    </label>
+  `
+    )
+    .join("");
+}
+
+loadDonorStopsBtn?.addEventListener("click", async () => {
+  mergeStatusEl.textContent = "";
+  donorStopsListEl.innerHTML = "";
+
+  if (!selectedRouteId) {
+    mergeStatusEl.textContent = "Select a base route first.";
+    return;
+  }
+
+  const donorId = Number(donorRouteSelectEl.value);
+  if (!donorId) {
+    mergeStatusEl.textContent = "Select a donor route.";
+    return;
+  }
+
+  if (donorId === selectedRouteId) {
+    mergeStatusEl.textContent = "Donor route must be different than base route.";
+    return;
+  }
+
+  try {
+    await loadDonorStops(donorId);
+  } catch (err) {
+    mergeStatusEl.textContent = `Could not load donor stops: ${err.message}`;
+  }
+});
+
+selectAllDonorStopsBtn?.addEventListener("click", () => {
+  document.querySelectorAll(".donorStopCb").forEach((cb) => (cb.checked = true));
+});
+
+mergeSelectedStopsBtn?.addEventListener("click", async () => {
+  mergeStatusEl.textContent = "";
+
+  if (!selectedRouteId) {
+    mergeStatusEl.textContent = "Select a base route first.";
+    return;
+  }
+
+  const donorId = Number(donorRouteSelectEl.value);
+  if (!donorId || donorId === selectedRouteId) {
+    mergeStatusEl.textContent = "Pick a donor route that is different than base route.";
+    return;
+  }
+
+  const selectedRouteStopIds = Array.from(document.querySelectorAll(".donorStopCb"))
+    .filter((cb) => cb.checked)
+    .map((cb) => Number(cb.value))
+    .filter((n) => Number.isFinite(n));
+
+  if (selectedRouteStopIds.length === 0) {
+    mergeStatusEl.textContent = "Select at least one donor stop.";
+    return;
+  }
+
+  mergeStatusEl.textContent = "Merging...";
+
+  try {
+    await apiPost(`/routes/${selectedRouteId}/merge`, {
+      fromRouteId: donorId,
+      routeStopIds: selectedRouteStopIds,
+      strategy: "PROXIMITY",
+    });
+
+    mergeStatusEl.textContent = "Merged! Reloading base route...";
+    await loadRouteDetails(selectedRouteId);
+
+    mergeStatusEl.textContent = "Done.";
+  } catch (err) {
+    mergeStatusEl.textContent = `Merge failed: ${err.message}`;
   }
 });
 

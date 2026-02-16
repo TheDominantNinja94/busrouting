@@ -2,12 +2,15 @@ package com.bus.routing.controllers;
 
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import com.bus.routing.controllers.dto.MergeRouteRequest;
+import com.bus.routing.controllers.dto.RouteDetailsResponse;
 import com.bus.routing.models.Route;
 import com.bus.routing.models.RouteStop;
 import com.bus.routing.repositories.RouteRepository;
 import com.bus.routing.repositories.RouteStopRepository;
-import com.bus.routing.controllers.dto.RouteDetailsResponse;
+import com.bus.routing.services.RouteMergeService;
 
 @RestController
 @RequestMapping("/routes")
@@ -15,21 +18,32 @@ public class RouteController {
 
     private final RouteRepository routeRepository;
     private final RouteStopRepository routeStopRepository;
+    private final RouteMergeService routeMergeService;
 
-    public RouteController(RouteRepository routeRepository, RouteStopRepository routeStopRepository) {
+    public RouteController(
+            RouteRepository routeRepository,
+            RouteStopRepository routeStopRepository,
+            RouteMergeService routeMergeService
+    ) {
         this.routeRepository = routeRepository;
         this.routeStopRepository = routeStopRepository;
+        this.routeMergeService = routeMergeService;
     }
 
+    // Only show real routes (exclude drafts)
     @GetMapping
     public List<Route> getAllRoutes() {
-        return routeRepository.findAll();
+        return routeRepository.findByDraftFalse();
     }
 
     @PostMapping
     public Route createRoute(@RequestBody Route route) {
         if (route == null) {
             throw new IllegalArgumentException("Route body cannot be null");
+        }
+        // Optional safety: prevent creating drafts via normal route creation
+        if (route.isDraft()) {
+            throw new IllegalArgumentException("Cannot create a draft route via POST /routes");
         }
         return routeRepository.save(route);
     }
@@ -40,33 +54,53 @@ public class RouteController {
     }
 
     @GetMapping("/{routeId}/details")
-    public RouteDetailsResponse getRouteDetails(@PathVariable long routeId) {
+    public RouteDetailsResponse getRouteDetails(@PathVariable Long routeId) {
 
         Route route = routeRepository.findById(routeId)
-                .orElseThrow(() -> new IllegalArgumentException("Route not found: " + routeId));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Route not found: " + routeId));
 
-        List<RouteStop> routeStops =
-                routeStopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
+
+        List<RouteStop> routeStops = routeStopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
 
         RouteDetailsResponse response = new RouteDetailsResponse();
         response.routeId = route.getId();
         response.routeNumber = route.getRouteNumber();
+        response.draft = route.isDraft();
+        response.sourceRouteId = route.getSourceRouteId();
 
         response.stops = routeStops.stream().map(rs -> {
-    RouteDetailsResponse.StopOnRoute s = new RouteDetailsResponse.StopOnRoute();
+            RouteDetailsResponse.StopOnRoute s = new RouteDetailsResponse.StopOnRoute();
 
-    s.routeStopId = rs.getId();
-    s.stopOrder = rs.getStopOrder();
-    s.stopId = rs.getStop().getId();
-    s.name = rs.getStop().getName();
-    s.latitude = rs.getStop().getLatitude();
-    s.longitude = rs.getStop().getLongitude();
-    s.pickupTime = rs.getPickupTime();
+            s.routeStopId = rs.getId();
+            s.stopOrder = rs.getStopOrder();
+            s.stopId = rs.getStop().getId();
+            s.name = rs.getStop().getName();
+            s.latitude = rs.getStop().getLatitude();
+            s.longitude = rs.getStop().getLongitude();
+            s.pickupTime = rs.getPickupTime();
 
-    return s;
-}).toList();
-
+            return s;
+        }).toList();
 
         return response;
+    }
+
+    // Non-destructive merge: creates a draft route
+    @PostMapping("/{baseRouteId}/merge")
+    public RouteDetailsResponse mergeRoute(@PathVariable Long baseRouteId, @RequestBody MergeRouteRequest req) {
+
+        if (req == null || req.fromRouteId == null || req.routeStopIds == null || req.routeStopIds.isEmpty()) {
+            throw new IllegalArgumentException("fromRouteId and routeStopIds are required");
+        }
+
+        Route draft = routeMergeService.mergeIntoDraftRoute(baseRouteId, req.fromRouteId, req.routeStopIds);
+
+        return getRouteDetails(draft.getId());
+    }
+
+    // Delete draft route safely
+    @DeleteMapping("/{routeId}/draft")
+    public void deleteDraft(@PathVariable Long routeId) {
+        routeMergeService.deleteDraftRoute(routeId);
     }
 }
