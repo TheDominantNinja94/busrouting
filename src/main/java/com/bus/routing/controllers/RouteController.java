@@ -4,13 +4,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+
 import com.bus.routing.controllers.dto.MergeRouteRequest;
+import com.bus.routing.controllers.dto.RenameRouteRequest;
 import com.bus.routing.controllers.dto.RouteDetailsResponse;
+import com.bus.routing.controllers.dto.PublishDraftRequest;
+
 import com.bus.routing.models.Route;
 import com.bus.routing.models.RouteStop;
+
 import com.bus.routing.repositories.RouteRepository;
 import com.bus.routing.repositories.RouteStopRepository;
+
 import com.bus.routing.services.RouteMergeService;
+import com.bus.routing.services.DraftPublishService;
+
+
 
 @RestController
 @RequestMapping("/routes")
@@ -19,22 +28,30 @@ public class RouteController {
     private final RouteRepository routeRepository;
     private final RouteStopRepository routeStopRepository;
     private final RouteMergeService routeMergeService;
+    private final DraftPublishService draftPublishService;
 
     public RouteController(
             RouteRepository routeRepository,
             RouteStopRepository routeStopRepository,
-            RouteMergeService routeMergeService
+            RouteMergeService routeMergeService,
+            DraftPublishService draftPublishService
     ) {
         this.routeRepository = routeRepository;
         this.routeStopRepository = routeStopRepository;
         this.routeMergeService = routeMergeService;
+        this.draftPublishService = draftPublishService;
     }
 
-    // Only show real routes (exclude drafts)
-    @GetMapping
-    public List<Route> getAllRoutes() {
-        return routeRepository.findByDraftFalse();
+
+// Show routes. By default excludes drafts, but you can include them with ?includeDrafts=true
+@GetMapping
+public List<Route> getAllRoutes(@RequestParam(defaultValue = "false") boolean includeDrafts) {
+    if (includeDrafts) {
+        return routeRepository.findAll();
     }
+    return routeRepository.findByDraftFalse();
+}
+
 
     @PostMapping
     public Route createRoute(@RequestBody Route route) {
@@ -50,8 +67,16 @@ public class RouteController {
 
     @DeleteMapping("/{id}")
     public void deleteRoute(@PathVariable Long id) {
-        routeRepository.deleteById(id);
-    }
+    Route route = routeRepository.findById(id)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Route not found: " + id));
+
+    // delete stops first to avoid FK issues
+    List<RouteStop> stops = routeStopRepository.findByRouteIdOrderByStopOrderAsc(id);
+    routeStopRepository.deleteAll(stops);
+
+    routeRepository.delete(route);
+}
+
 
     @GetMapping("/{routeId}/details")
     public RouteDetailsResponse getRouteDetails(@PathVariable Long routeId) {
@@ -103,4 +128,30 @@ public class RouteController {
     public void deleteDraft(@PathVariable Long routeId) {
         routeMergeService.deleteDraftRoute(routeId);
     }
+    @PatchMapping("/{routeId}")
+public Route renameRoute(@PathVariable Long routeId, @RequestBody RenameRouteRequest req) {
+    if (req == null || req.routeNumber == null || req.routeNumber.trim().isEmpty()) {
+        throw new IllegalArgumentException("routeNumber is required");
+    }
+
+    Route route = routeRepository.findById(routeId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Route not found: " + routeId));
+
+    route.setRouteNumber(req.routeNumber.trim());
+    return routeRepository.save(route);
+}
+
+@PostMapping("/{draftRouteId}/publish")
+public RouteDetailsResponse publishDraft(
+        @PathVariable Long draftRouteId,
+        @RequestBody(required = false) PublishDraftRequest req
+) {
+    String newName = (req != null) ? req.routeNumber : null;
+    boolean deleteDraft = (req == null) ? true : req.deleteDraft;
+
+    Route newRoute = draftPublishService.publishDraftToNewRoute(draftRouteId, newName, deleteDraft);
+    return getRouteDetails(newRoute.getId());
+}
+
+
 }
