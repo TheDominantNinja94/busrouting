@@ -4,6 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bus Routing Prototype</title>
+
+  <!-- Leaflet (REQUIRED) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <!-- Leaflet Routing Machine (for street-following routes) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+  />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -27,13 +40,21 @@
       <p id="routesStatus" class="status"></p>
     </section>
 
-    <!-- RIGHT: DETAILS + MERGE + ADD STOP -->
+    <!-- RIGHT: DETAILS + MAP + MERGE + ADD STOP -->
     <section class="card">
       <h2>Route Details</h2>
 
-      <!-- Draft bar (shows only when viewing a draft) -->
+      <!-- Draft bar -->
       <div id="draftBar" style="margin:10px 0;"></div>
 
+      <!-- IMPORTANT: Map must be OUTSIDE #routeDetails so it doesn't get overwritten -->
+<div id="routeMap" class="map"></div>
+<p id="mapStatus" class="status"></p>
+
+<div id="routeDetails" class="details">
+
+
+      <!-- Only this area gets replaced by app.js -->
       <div id="routeDetails" class="details">
         <p class="muted">Select a route to view stops.</p>
       </div>
@@ -85,6 +106,10 @@
       </form>
     </section>
   </main>
+
+  <!-- Scripts at bottom -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 
   <script src="app.js"></script>
 </body>

@@ -1,3 +1,4 @@
+/* styles.css */
 * { box-sizing: border-box; }
 body {
   font-family: system-ui, Arial, sans-serif;
@@ -81,6 +82,7 @@ body {
   margin: 0 0 10px;
   font-size: 16px;
 }
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -123,3 +125,17 @@ body {
   border-color: #ffb6b6;
 }
 
+/* Map container */
+#routeMap {
+  height: 360px;
+  width: 100%;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Fix Leaflet map tiles showing as a "grid" during resize */
+#routeMap .leaflet-container {
+  width: 100%;
+  height: 100%;
+}

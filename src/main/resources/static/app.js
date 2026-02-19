@@ -4,6 +4,8 @@ const routesStatusEl = document.getElementById("routesStatus");
 const detailsEl = document.getElementById("routeDetails");
 const detailsStatusEl = document.getElementById("detailsStatus");
 const selectedRouteLabelEl = document.getElementById("selectedRouteLabel");
+const mapStatusEl = document.getElementById("mapStatus");
+
 
 const createRouteForm = document.getElementById("createRouteForm");
 const routeNumberInput = document.getElementById("routeNumberInput");
@@ -29,14 +31,63 @@ const mergeStatusEl = document.getElementById("mergeStatus");
 // Draft UI (optional container in HTML: <div id="draftBar"></div>)
 const draftBarEl = document.getElementById("draftBar");
 
+// Map UI (IMPORTANT: routeMap must NOT be overwritten by detailsEl.innerHTML)
+let routeMapEl = document.getElementById("routeMap");
+
 let selectedRouteId = null;
 let selectedRouteIsDraft = false;
 let selectedRouteSourceId = null;
+
+// Leaflet state
+let leafletMap = null;
+let leafletMarkersLayer = null;
+let leafletLine = null;
+let leafletRoutingControl = null;
+let mapRenderSeq = 0;
+let _leafletIconFixed = false;
+
+// ===== Routing config (free now, swappable later) =====
+const ROUTING = {
+  // OSRM public endpoint (fine for demos, not guaranteed for production)
+  osrmServiceUrl: "https://router.project-osrm.org/route/v1",
+  osrmNearestUrl: "https://router.project-osrm.org/nearest/v1/driving",
+  snapStopsToRoad: false, // optional (can be slow/unreliable on demo endpoints)
+  snapConcurrency: 4,
+  snapTimeoutMs: 1200,
+  snapWarnMeters: 30,
+};
 
 // ===== helpers =====
 function getRouteId(obj) {
   // routes list uses {id}, details endpoint uses {routeId}
   return obj?.routeId ?? obj?.id ?? null;
+}
+
+function isFiniteNumber(n) {
+  return Number.isFinite(Number(n));
+}
+
+// Haversine distance (meters) for "snap moved too far" warnings
+function metersBetween(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function withTimeout(promiseFactory, ms) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+
+  try {
+    return await promiseFactory(controller.signal);
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 // ===== API helpers =====
@@ -128,8 +179,222 @@ function renderRoutes(routes) {
   }
 }
 
+// ===== Leaflet map helpers =====
+function fixLeafletDefaultIconsOnce() {
+  if (_leafletIconFixed) return;
+  if (typeof L === "undefined") return;
+  if (!L.Icon || !L.Icon.Default) return;
+
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+
+  _leafletIconFixed = true;
+}
+
+function ensureMap() {
+  if (typeof L === "undefined") return null; // Leaflet not loaded
+
+  // IMPORTANT: if you ever re-render HTML and the map div gets recreated, re-grab it:
+  if (!routeMapEl) routeMapEl = document.getElementById("routeMap");
+  if (!routeMapEl) return null;
+
+  fixLeafletDefaultIconsOnce();
+
+  if (!leafletMap) {
+    leafletMap = L.map(routeMapEl, { zoomControl: true });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(leafletMap);
+
+    leafletMarkersLayer = L.layerGroup().addTo(leafletMap);
+
+    // Default view (LA-ish). We'll fitBounds when a route loads.
+    leafletMap.setView([34.0522, -118.2437], 10);
+  }
+
+  return leafletMap;
+}
+
+// ---- OSRM snapping (optional) ----
+async function osrmNearest(lat, lon, signal) {
+  const url = `${ROUTING.osrmNearestUrl}/${lon},${lat}?number=1`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`OSRM nearest failed: ${res.status}`);
+  const data = await res.json();
+  const wp = data?.waypoints?.[0];
+  if (!wp?.location) throw new Error("OSRM nearest returned no location");
+  const [snappedLon, snappedLat] = wp.location;
+  return { latitude: snappedLat, longitude: snappedLon };
+}
+
+async function snapStopsToRoad(cleanStops) {
+  const CONCURRENCY = ROUTING.snapConcurrency ?? 4;
+  const out = [];
+
+  for (let i = 0; i < cleanStops.length; i += CONCURRENCY) {
+    const chunk = cleanStops.slice(i, i + CONCURRENCY);
+    const snappedChunk = await Promise.all(
+      chunk.map(async (s) => {
+        try {
+          const snapped = await withTimeout(
+            (signal) => osrmNearest(s.latitude, s.longitude, signal),
+            ROUTING.snapTimeoutMs ?? 1200
+          );
+
+          const movedMeters = metersBetween(
+            s.latitude,
+            s.longitude,
+            snapped.latitude,
+            snapped.longitude
+          );
+
+          return { ...s, ...snapped, _snapped: true, _snapMovedMeters: movedMeters };
+        } catch {
+          return { ...s, _snapped: false, _snapMovedMeters: 0 };
+        }
+      })
+    );
+    out.push(...snappedChunk);
+  }
+
+  return out;
+}
+
+function setMapStatus(msg, isError = false) {
+  if (!mapStatusEl) return;
+  mapStatusEl.textContent = msg || "";
+  mapStatusEl.style.color = isError ? "#b00020" : "#2e7d32";
+}
+
+function drawFallbackLine(map, stopsArr) {
+  const latlngs = stopsArr.map((s) => [s.latitude, s.longitude]);
+  if (leafletLine) { leafletLine.remove(); leafletLine = null; }
+  leafletLine = L.polyline(latlngs).addTo(map);
+  map.fitBounds(L.latLngBounds(latlngs), { padding: [20, 20] });
+}
+
+
+// ===== Map rendering =====
+async function renderRouteMap(stops) {
+  const map = ensureMap();
+  if (!map) return;
+
+  const mySeq = ++mapRenderSeq; // prevents stale route callbacks from applying
+
+  // Leaflet sometimes needs this after layout changes
+  setTimeout(() => map.invalidateSize(), 0);
+
+  // Clear previous markers/lines/routes
+  if (leafletMarkersLayer) leafletMarkersLayer.clearLayers();
+  if (leafletLine) { leafletLine.remove(); leafletLine = null; }
+  if (leafletRoutingControl) {
+    map.removeControl(leafletRoutingControl);
+    leafletRoutingControl = null;
+  }
+
+  const clean = (stops ?? [])
+    .filter((s) => isFiniteNumber(s.latitude) && isFiniteNumber(s.longitude))
+    .map((s) => ({
+      ...s,
+      latitude: Number(s.latitude),
+      longitude: Number(s.longitude),
+      stopOrder: Number(s.stopOrder),
+    }))
+    .sort((a, b) => a.stopOrder - b.stopOrder);
+
+  if (clean.length === 0) {
+    setMapStatus("");
+    return;
+  }
+
+  // Optional snapping (off by default)
+  let used = clean;
+  if (ROUTING.snapStopsToRoad) {
+    setMapStatus("Snapping stops to roads…");
+    try {
+      used = await snapStopsToRoad(clean);
+    } catch {
+      // ignore snap failure, use original points
+      used = clean;
+    }
+  }
+
+  // Markers
+  used.forEach((s) => {
+    const latlng = [s.latitude, s.longitude];
+
+    const movedNote =
+      s._snapped && s._snapMovedMeters > (ROUTING.snapWarnMeters ?? 30)
+        ? `<br/><span class="muted">⚠ snapped ~${Math.round(s._snapMovedMeters)}m</span>`
+        : "";
+
+    const label = `<strong>#${s.stopOrder}</strong> ${s.name ?? "Stop"}${movedNote}`;
+    L.marker(latlng).bindPopup(label).addTo(leafletMarkersLayer);
+  });
+
+  // If routing plugin missing, fallback immediately
+  if (!(L.Routing && L.Routing.control && L.Routing.osrmv1)) {
+    setMapStatus("Routing plugin missing — showing straight line.", true);
+    drawFallbackLine(map, used);
+    return;
+  }
+
+  setMapStatus("Routing…");
+
+  // Router with timeout (prevents hanging on demo server)
+  const router = L.Routing.osrmv1({
+    serviceUrl: ROUTING.osrmServiceUrl,
+    timeout: ROUTING.routeTimeoutMs ?? 8000, // ms
+    profile: "driving",
+  });
+
+  leafletRoutingControl = L.Routing.control({
+    waypoints: used.map((s) => L.latLng(s.latitude, s.longitude)),
+    addWaypoints: false,
+    draggableWaypoints: false,
+    fitSelectedRoutes: true,
+    routeWhileDragging: false,
+    show: false,
+    createMarker: () => null,
+    router,
+  }).addTo(map);
+
+  // Guard against stale callbacks if user clicked another route
+  const safe = (fn) => (...args) => {
+    if (mySeq !== mapRenderSeq) return;
+    fn(...args);
+  };
+
+  leafletRoutingControl.on(
+    "routesfound",
+    safe((e) => {
+      setMapStatus("Routed ✅");
+      const r = e.routes?.[0];
+      if (r?.bounds) map.fitBounds(r.bounds, { padding: [20, 20] });
+    })
+  );
+
+  leafletRoutingControl.on(
+    "routingerror",
+    safe(() => {
+      // remove routing overlay and fallback
+      try { map.removeControl(leafletRoutingControl); } catch {}
+      leafletRoutingControl = null;
+
+      setMapStatus("Routing failed — showing straight line.", true);
+      drawFallbackLine(map, used);
+    })
+  );
+}
+
+
+// ===== Draft bar =====
 function setDraftBar(details) {
-  // If you don't have <div id="draftBar"></div> in your HTML, this does nothing.
   if (!draftBarEl) return;
 
   if (details?.draft) {
@@ -151,15 +416,15 @@ function setDraftBar(details) {
     `;
 
     const publishBtn = document.getElementById("publishDraftBtn");
-    publishBtn.addEventListener("click", async () => {
+    publishBtn?.addEventListener("click", async () => {
       try {
         if (draftId == null) throw new Error("Draft id missing from details response");
 
         const suggested = (details.routeNumber ?? "").replace("-DRAFT", "");
         const newName = prompt("Name for the new route?", suggested);
-        if (newName === null) return; // cancelled
+        if (newName === null) return;
 
-        mergeStatusEl.textContent = "Saving draft as new route...";
+        if (mergeStatusEl) mergeStatusEl.textContent = "Saving draft as new route...";
 
         const createdDetails = await apiPost(`/routes/${draftId}/publish`, {
           routeNumber: newName.trim() || suggested,
@@ -172,14 +437,14 @@ function setDraftBar(details) {
         await loadRoutes();
         await loadRouteDetails(newRouteId);
 
-        mergeStatusEl.textContent = `Saved as new route (id ${newRouteId}).`;
+        if (mergeStatusEl) mergeStatusEl.textContent = `Saved as new route (id ${newRouteId}).`;
       } catch (err) {
-        mergeStatusEl.textContent = `Could not save draft: ${err.message}`;
+        if (mergeStatusEl) mergeStatusEl.textContent = `Could not save draft: ${err.message}`;
       }
     });
 
     const deleteBtn = document.getElementById("deleteDraftBtn");
-    deleteBtn.addEventListener("click", async () => {
+    deleteBtn?.addEventListener("click", async () => {
       const ok = confirm("Delete this draft route?");
       if (!ok) return;
 
@@ -189,11 +454,9 @@ function setDraftBar(details) {
 
         if (mergeStatusEl) mergeStatusEl.textContent = "Draft deleted.";
 
-        // After deleting draft, go back to the source/base route if we have it
         if (details.sourceRouteId) {
           await loadRouteDetails(details.sourceRouteId);
         } else {
-          // fallback
           selectedRouteId = null;
           selectedRouteIsDraft = false;
           selectedRouteSourceId = null;
@@ -202,7 +465,6 @@ function setDraftBar(details) {
           if (mergeBaseRouteLabelEl) mergeBaseRouteLabelEl.textContent = "";
         }
 
-        // refresh list in case backend includes drafts (or after deletion)
         await loadRoutes();
       } catch (err) {
         if (mergeStatusEl) mergeStatusEl.textContent = `Could not delete draft: ${err.message}`;
@@ -214,8 +476,8 @@ function setDraftBar(details) {
   }
 }
 
+// ===== Route details rendering =====
 function renderRouteDetails(details) {
-  // Track whether we're looking at a draft
   selectedRouteIsDraft = !!details.draft;
   selectedRouteSourceId = details.sourceRouteId ?? null;
 
@@ -226,7 +488,6 @@ function renderRouteDetails(details) {
     ? `Route ${details.routeNumber} (id ${routeId}) — DRAFT`
     : `Route ${details.routeNumber} (id ${routeId})`;
 
-  // Show/hide draft actions bar (publish/delete live here)
   setDraftBar(details);
 
   const headerHtml = `
@@ -246,18 +507,16 @@ function renderRouteDetails(details) {
     </h3>
   `;
 
-  // ----- NO STOPS CASE -----
   if (stops.length === 0) {
     detailsEl.innerHTML = `
       ${headerHtml}
       <p class="muted">No stops attached to this route yet.</p>
     `;
-
     wireRouteHeaderActions(routeId);
+    renderRouteMap(stops);
     return;
   }
 
-  // ----- STOPS TABLE -----
   const rows = stops
     .map(
       (s) => `
@@ -296,6 +555,7 @@ function renderRouteDetails(details) {
   `;
 
   wireRouteHeaderActions(routeId);
+  renderRouteMap(stops);
 }
 
 function wireRouteHeaderActions(routeId) {
