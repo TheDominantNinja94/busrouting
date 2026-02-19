@@ -41,70 +41,68 @@
     </section>
 
     <!-- RIGHT: DETAILS + MAP + MERGE + ADD STOP -->
-    <section class="card">
-      <h2>Route Details</h2>
+<section class="card">
+  <h2>Route Details</h2>
 
-      <!-- Draft bar -->
-      <div id="draftBar" style="margin:10px 0;"></div>
+  <!-- Draft bar -->
+  <div id="draftBar" style="margin:10px 0;"></div>
 
-      <!-- IMPORTANT: Map must be OUTSIDE #routeDetails so it doesn't get overwritten -->
-<div id="routeMap" class="map"></div>
-<p id="mapStatus" class="status"></p>
+  <!-- Map is OUTSIDE #routeDetails so it doesn't get overwritten -->
+  <div id="routeMap" class="map"></div>
+  <p id="mapStatus" class="status"></p>
 
-<div id="routeDetails" class="details">
+  <!-- Only THIS div gets replaced by app.js -->
+  <div id="routeDetails" class="details">
+    <p class="muted">Select a route to view stops.</p>
+  </div>
 
+  <p id="detailsStatus" class="status"></p>
 
-      <!-- Only this area gets replaced by app.js -->
-      <div id="routeDetails" class="details">
-        <p class="muted">Select a route to view stops.</p>
-      </div>
+  <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
 
-      <p id="detailsStatus" class="status"></p>
+  <h3 class="title">Merge Routes</h3>
+  <p class="muted">
+    Base route (selected): <strong><span id="mergeBaseRouteLabel">none</span></strong>
+  </p>
 
-      <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
+  <label class="label" for="donorRouteSelect">Donor route (route to pull stops from)</label>
+  <select id="donorRouteSelect"></select>
 
-      <h3 class="title">Merge Routes</h3>
-      <p class="muted">
-        Base route (selected): <strong><span id="mergeBaseRouteLabel">none</span></strong>
-      </p>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+    <button id="loadDonorStopsBtn" type="button">Load donor stops</button>
+    <button id="selectAllDonorStopsBtn" type="button">Select all</button>
+    <button id="mergeSelectedStopsBtn" type="button">Merge selected into base</button>
+  </div>
 
-      <label class="label" for="donorRouteSelect">Donor route (route to pull stops from)</label>
-      <select id="donorRouteSelect"></select>
+  <p id="mergeStatus" class="status"></p>
+  <div id="donorStopsList" style="margin-top:12px;"></div>
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-        <button id="loadDonorStopsBtn" type="button">Load donor stops</button>
-        <button id="selectAllDonorStopsBtn" type="button">Select all</button>
-        <button id="mergeSelectedStopsBtn" type="button">Merge selected into base</button>
-      </div>
+  <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
 
-      <p id="mergeStatus" class="status"></p>
-      <div id="donorStopsList" style="margin-top:12px;"></div>
+  <p class="muted">
+    Selected route id: <span id="selectedRouteLabel">none</span>
+  </p>
 
-      <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
+  <h3 style="margin:0 0 10px;">Add Stop to Selected Route</h3>
 
-      <p class="muted">
-        Selected route id: <span id="selectedRouteLabel">none</span>
-      </p>
+  <form id="addStopForm" class="stack">
+    <input id="stopName" type="text" placeholder="Stop name (e.g., Main St & 3rd)" required />
 
-      <h3 style="margin:0 0 10px;">Add Stop to Selected Route</h3>
+    <div class="row">
+      <input id="stopLat" type="number" step="any" placeholder="Latitude" required />
+      <input id="stopLon" type="number" step="any" placeholder="Longitude" required />
+    </div>
 
-      <form id="addStopForm" class="stack">
-        <input id="stopName" type="text" placeholder="Stop name (e.g., Main St & 3rd)" required />
+    <div class="row">
+      <input id="stopOrder" type="number" min="1" step="1" placeholder="Stop order (1,2,3...)" required />
+      <input id="pickupTime" type="text" placeholder="Pickup time (HH:MM, e.g., 06:45)" required />
+    </div>
 
-        <div class="row">
-          <input id="stopLat" type="number" step="any" placeholder="Latitude" required />
-          <input id="stopLon" type="number" step="any" placeholder="Longitude" required />
-        </div>
+    <button type="submit">Add Stop</button>
+    <p id="addStopStatus" class="status"></p>
+  </form>
+</section>
 
-        <div class="row">
-          <input id="stopOrder" type="number" min="1" step="1" placeholder="Stop order (1,2,3...)" required />
-          <input id="pickupTime" type="text" placeholder="Pickup time (HH:MM, e.g., 06:45)" required />
-        </div>
-
-        <button type="submit">Add Stop</button>
-        <p id="addStopStatus" class="status"></p>
-      </form>
-    </section>
   </main>
 
   <!-- Scripts at bottom -->
