@@ -5,25 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bus Routing Prototype</title>
 
-  <!-- Leaflet (REQUIRED) -->
+  <!-- PWA basics -->
+  <meta name="theme-color" content="#0b0f14" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- Leaflet CSS (REQUIRED) -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
 
-  <!-- Leaflet Routing Machine (for street-following routes) -->
+  <!-- Your app CSS -->
+  <link rel="stylesheet" href="/css/styles.css" />
+
+  <!-- Leaflet Routing Machine CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
   />
-
-  <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
   <header class="topbar">
-    <h1>Bus Routing Prototype</h1>
-    <p class="sub">Routes → Stops → Pickup Times</p>
+    <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+      <div>
+        <h1 style="margin:0;">Bus Routing Prototype</h1>
+        <p class="sub">Routes → Stops → Pickup Times</p>
+      </div>
+      <a class="driver-link" href="/driver.html">Driver Mode</a>
+    </div>
   </header>
 
   <main class="layout">
@@ -41,74 +54,75 @@
     </section>
 
     <!-- RIGHT: DETAILS + MAP + MERGE + ADD STOP -->
-<section class="card">
-  <h2>Route Details</h2>
+    <section class="card">
+      <h2>Route Details</h2>
 
-  <!-- Draft bar -->
-  <div id="draftBar" style="margin:10px 0;"></div>
+      <!-- Draft bar -->
+      <div id="draftBar" style="margin:10px 0;"></div>
 
-  <!-- Map is OUTSIDE #routeDetails so it doesn't get overwritten -->
-  <div id="routeMap" class="map"></div>
-  <p id="mapStatus" class="status"></p>
+      <!-- Map (must have a real height in CSS) -->
+      <div id="routeMap" class="map"></div>
+      <p id="mapStatus" class="status"></p>
 
-  <!-- Only THIS div gets replaced by app.js -->
-  <div id="routeDetails" class="details">
-    <p class="muted">Select a route to view stops.</p>
-  </div>
+      <!-- Only THIS div gets replaced by app.js -->
+      <div id="routeDetails" class="details">
+        <p class="muted">Select a route to view stops.</p>
+      </div>
 
-  <p id="detailsStatus" class="status"></p>
+      <p id="detailsStatus" class="status"></p>
 
-  <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
+      <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
 
-  <h3 class="title">Merge Routes</h3>
-  <p class="muted">
-    Base route (selected): <strong><span id="mergeBaseRouteLabel">none</span></strong>
-  </p>
+      <h3 class="title">Merge Routes</h3>
+      <p class="muted">
+        Base route (selected): <strong><span id="mergeBaseRouteLabel">none</span></strong>
+      </p>
 
-  <label class="label" for="donorRouteSelect">Donor route (route to pull stops from)</label>
-  <select id="donorRouteSelect"></select>
+      <label class="label" for="donorRouteSelect">Donor route (route to pull stops from)</label>
+      <select id="donorRouteSelect"></select>
 
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-    <button id="loadDonorStopsBtn" type="button">Load donor stops</button>
-    <button id="selectAllDonorStopsBtn" type="button">Select all</button>
-    <button id="mergeSelectedStopsBtn" type="button">Merge selected into base</button>
-  </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+        <button id="loadDonorStopsBtn" type="button">Load donor stops</button>
+        <button id="selectAllDonorStopsBtn" type="button">Select all</button>
+        <button id="mergeSelectedStopsBtn" type="button">Merge selected into base</button>
+      </div>
 
-  <p id="mergeStatus" class="status"></p>
-  <div id="donorStopsList" style="margin-top:12px;"></div>
+      <p id="mergeStatus" class="status"></p>
+      <div id="donorStopsList" style="margin-top:12px;"></div>
 
-  <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
+      <hr style="border:0;border-top:1px solid #eef1fb;margin:14px 0;" />
 
-  <p class="muted">
-    Selected route id: <span id="selectedRouteLabel">none</span>
-  </p>
+      <p class="muted">
+        Selected route id: <span id="selectedRouteLabel">none</span>
+      </p>
 
-  <h3 style="margin:0 0 10px;">Add Stop to Selected Route</h3>
+      <h3 style="margin:0 0 10px;">Add Stop to Selected Route</h3>
 
-  <form id="addStopForm" class="stack">
-    <input id="stopName" type="text" placeholder="Stop name (e.g., Main St & 3rd)" required />
+      <form id="addStopForm" class="stack">
+        <input id="stopName" type="text" placeholder="Stop name (e.g., Main St & 3rd)" required />
 
-    <div class="row">
-      <input id="stopLat" type="number" step="any" placeholder="Latitude" required />
-      <input id="stopLon" type="number" step="any" placeholder="Longitude" required />
-    </div>
+        <div class="row">
+          <input id="stopLat" type="number" step="any" placeholder="Latitude" required />
+          <input id="stopLon" type="number" step="any" placeholder="Longitude" required />
+        </div>
 
-    <div class="row">
-      <input id="stopOrder" type="number" min="1" step="1" placeholder="Stop order (1,2,3...)" required />
-      <input id="pickupTime" type="text" placeholder="Pickup time (HH:MM, e.g., 06:45)" required />
-    </div>
+        <div class="row">
+          <input id="stopOrder" type="number" min="1" step="1" placeholder="Stop order (1,2,3...)" required />
+          <input id="pickupTime" type="text" placeholder="Pickup time (HH:MM, e.g., 06:45)" required />
+        </div>
 
-    <button type="submit">Add Stop</button>
-    <p id="addStopStatus" class="status"></p>
-  </form>
-</section>
-  
+        <button type="submit">Add Stop</button>
+        <p id="addStopStatus" class="status"></p>
+      </form>
+    </section>
   </main>
 
-  <!-- Scripts at bottom -->
+  <!-- Libraries FIRST -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 
-  <script src="app.js"></script>
+  <!-- Then YOUR scripts (ONCE) -->
+  <script src="/js/app.js" defer></script>
+  <script src="/js/sw-register.js" defer></script>
 </body>
 </html>

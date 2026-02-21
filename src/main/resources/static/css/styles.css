@@ -1,0 +1,358 @@
+/* styles.css (cleaned + deduped) */
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  background: #f6f7fb;
+  color: #111;
+}
+
+/* ---------- Admin / Office UI ---------- */
+.topbar {
+  padding: 18px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e6e8f0;
+}
+.topbar h1 { margin: 0; font-size: 20px; }
+.sub { margin: 6px 0 0; color: #666; font-size: 14px; }
+
+.driver-link {
+  align-self: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #cfd5ea;
+  background: #f1f3ff;
+  color: #111;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.driver-link:hover { filter: brightness(0.98); }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  padding: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e6e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #d7dbea;
+  border-radius: 10px;
+  outline: none;
+}
+
+.list { list-style: none; margin: 0; padding: 0; }
+.list li {
+  padding: 10px 12px;
+  border: 1px solid #edf0fb;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+.list li:hover { background: #fafbff; }
+
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid #e6e8f0;
+  color: #444;
+  white-space: nowrap;
+}
+
+.details .title { margin: 0 0 10px; font-size: 16px; }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #eef1fb;
+  font-size: 14px;
+}
+
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.mini {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #d7dbea;
+  border-radius: 8px;
+}
+
+.actions { white-space: nowrap; }
+.muted { color: #666; }
+.status { color: #b00020; font-size: 13px; min-height: 18px; }
+
+/* Buttons (shared) */
+button { cursor: pointer; }
+.btn, .row button {
+  padding: 10px 12px;
+  border: 1px solid #cfd5ea;
+  background: #f1f3ff;
+  border-radius: 10px;
+}
+.btn:hover, .row button:hover { filter: brightness(0.98); }
+
+.btn.danger {
+  background: #ffecec;
+  border-color: #ffb6b6;
+}
+
+/* Optional semantic button helpers */
+.btn-primary { background: #2563eb; border-color: #0b1f5a; color: #fff; }
+.btn-success { background: #16a34a; border-color: #065f24; color: #fff; }
+
+/* ---------- Map (Admin) ---------- */
+body:not(.mode-driver) #routeMap {
+  height: 420px;
+  width: 100%;
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Leaflet container safety */
+.leaflet-container { width: 100%; height: 100%; }
+
+/* Drag/drop styling */
+tr.dragging { opacity: 0.5; }
+tr.drag-over { outline: 2px dashed #8aa0ff; outline-offset: -2px; }
+.dragcell { width: 26px; text-align: center; color: #666; }
+.draghandle { user-select: none; }
+.draghandle:active { cursor: grabbing; }
+
+.marker-highlight {
+  transform: scale(1.4);
+  transition: transform 0.2s ease;
+}
+
+/* ---------- Responsive tweaks for admin layout ---------- */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+  body:not(.mode-driver) #routeMap {
+    height: 360px;
+  }
+  button, input, select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* =========================================================
+   DRIVER MODE (Field UI)
+   ========================================================= */
+body.mode-driver {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #0b0f14;
+  color: #fff;
+}
+
+/* Header pinned */
+body.mode-driver .driver-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #0b0f14;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+body.mode-driver .driver-title { font-weight: 700; }
+
+/* Map behind everything */
+body.mode-driver #routeMap.map-full {
+  position: fixed;
+  top: 56px; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+}
+
+/* Bottom sheet overlays map */
+body.mode-driver .driver-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2500;
+  max-height: 45vh;
+  overflow: auto;
+  padding: 12px;
+  background: rgba(255,255,255,0.96);
+  color: #111;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+}
+
+/* Top row in sheet */
+body.mode-driver .sheet-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Make the select take remaining space; buttons stay auto-sized */
+body.mode-driver .sheet-row select {
+  flex: 1 1 140px;
+  min-height: 44px;
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d7dbea;
+  background: #fff;
+}
+
+/* Undo any stretching on Open Maps (anchor) */
+body.mode-driver .sheet-row #recenterBtn { flex: 0 0 auto; }
+body.mode-driver .sheet-row a#openMapsBtn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* Controls row (Start/Prev/Next) */
+body.mode-driver .driver-controls {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+/* Big driver buttons */
+body.mode-driver #startRouteBtn,
+body.mode-driver #prevStopBtn,
+body.mode-driver #nextStopBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 52px;
+  padding: 12px 14px;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: 12px;
+  color: #fff;
+  border: 2px solid transparent;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+body.mode-driver #startRouteBtn { background: #2563eb; border-color: #0b1f5a; }
+body.mode-driver #prevStopBtn  { background: #374151; border-color: #111827; }
+body.mode-driver #nextStopBtn  { background: #16a34a; border-color: #065f24; }
+body.mode-driver .driver-controls button:active { transform: scale(0.98); }
+
+/* Open Current Stop should match the big buttons */
+body.mode-driver #openCurrentStopBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: 12px;
+  color: #fff;
+  background: #2563eb;
+  border: 2px solid #0b1f5a;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  margin: 6px 0 10px;
+}
+body.mode-driver #openCurrentStopBtn:active { transform: scale(0.98); }
+
+/* Current stop card */
+body.mode-driver .current-stop-card {
+  background: #111827;
+  color: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  margin: 10px 0;
+}
+
+/* Next stop line */
+body.mode-driver .next-stop {
+  margin: 8px 0 10px;
+  font-size: 15px;
+  color: #111;
+}
+
+/* Stops list */
+body.mode-driver .driver-stops {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 20px;
+}
+body.mode-driver .driver-stops li {
+  padding: 10px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+body.mode-driver .driver-stops li.is-next {
+  border-left: 4px solid rgba(22, 163, 74, 0.55);
+  padding-left: 10px;
+}
+body.mode-driver .driver-stops li.active {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+/* Status in driver mode */
+body.mode-driver #driverStatus {
+  margin-top: 10px;
+  font-size: 13px;
+  min-height: 18px;
+}
+
+body.mode-driver .btn.danger {
+  background: #ffecec;
+  border-color: #ffb6b6;
+  color: #7a0b0b;
+  font-weight: 700;
+}
+
+/* Driver header offline badge */
+body.mode-driver .offline-badge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: #b00020;
+  color: #fff;
+}
+
+/* Ensure the hidden attribute always hides elements */
+[hidden] { display: none !important; }

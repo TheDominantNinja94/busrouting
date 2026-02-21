@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>Driver Mode</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="/css/styles.css" />
+
+  <!-- Leaflet CSS (REQUIRED) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+</head>
+
+<body class="mode-driver">
+  <header class="driver-header">
+    <div class="driver-title">Driver Mode</div>
+    <span id="offlineBadge" class="offline-badge" hidden>OFFLINE</span>
+  </header>
+
+  <main class="driver-main">
+    <!-- IMPORTANT: driver.js expects this id -->
+    <div id="routeMap" class="map-full"></div>
+
+    <!-- Bottom sheet / controls -->
+<section class="driver-sheet">
+  <div class="sheet-row">
+    <select id="driverRouteSelect"></select>
+    <button id="recenterBtn" type="button" class="btn">Recenter</button>
+    <a id="openMapsBtn" class="btn" href="#" target="_blank" rel="noopener">Open Maps</a>
+  </div>
+
+  <!-- WIN 1 buttons -->
+  <div class="driver-controls">
+    <button id="startRouteBtn" type="button" class="btn btn-primary">Start</button>
+    <button id="prevStopBtn" type="button" class="btn">Prev</button>
+    <button id="nextStopBtn" type="button" class="btn btn-success">Next</button>
+  </div>
+  <div class="driver-actions">
+  <button id="openCurrentStopBtn" type="button" class="btn">Open Current Stop</button>
+</div>
+<div class="driver-actions">
+  <button id="resetProgressBtn" type="button" class="btn danger">Reset Progress</button>
+</div>
+
+  <div id="currentStopCard" class="current-stop-card">
+    <h3 style="margin:0 0 8px;">Current Stop</h3>
+    <div id="currentStopContent">Route not started.</div>
+  </div>
+
+  <div id="driverNext" class="next-stop"></div>
+
+  <ol id="driverStops" class="driver-stops"></ol>
+
+  <p id="driverStatus" class="status"></p>
+</section>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Routing Machine JS -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <!-- Driver logic -->
+  <script src="/js/driver.js"></script>
+
+  <!-- PWA registration (safe even if disabled on localhost in your sw-register.js) -->
+  <script src="/js/sw-register.js"></script>
+</body>
+</html>
